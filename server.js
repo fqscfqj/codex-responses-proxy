@@ -76,6 +76,7 @@ function mapMessagesToInput(messages) {
   if (!Array.isArray(messages) || messages.length === 0) return [];
 
   const input = [];
+  const knownFunctionCallIds = new Set();
 
   for (const message of messages) {
     if (!message || typeof message !== "object") continue;
@@ -83,9 +84,12 @@ function mapMessagesToInput(messages) {
     const role = message.role || "user";
 
     if (role === "tool") {
+      const callId = message.tool_call_id || message.call_id || "";
+      if (!callId || !knownFunctionCallIds.has(callId)) continue;
+
       input.push({
         type: "function_call_output",
-        call_id: message.tool_call_id || message.call_id || "",
+        call_id: callId,
         output: typeof message.content === "string" ? message.content : extractTextContent(message.content)
       });
       continue;
@@ -100,9 +104,11 @@ function mapMessagesToInput(messages) {
     if (role === "assistant" && Array.isArray(message.tool_calls)) {
       for (const toolCall of message.tool_calls) {
         if (toolCall?.type !== "function" || !toolCall.function?.name) continue;
+        const callId = toolCall.id || randomUUID();
+        knownFunctionCallIds.add(callId);
         input.push({
           type: "function_call",
-          call_id: toolCall.id || randomUUID(),
+          call_id: callId,
           name: toolCall.function.name,
           arguments: toolCall.function.arguments || ""
         });
@@ -386,6 +392,19 @@ const server = http.createServer(async (req, res) => {
 
         const toolCallStates = new Map();
 
+        function ensureToolCallState(key, fallback = {}) {
+          const existing = toolCallStates.get(key);
+          if (existing) return existing;
+
+          const state = {
+            index: typeof fallback.index === "number" ? fallback.index : toolCallStates.size,
+            id: fallback.id || randomUUID(),
+            name: fallback.name || ""
+          };
+          toolCallStates.set(key, state);
+          return state;
+        }
+
         await parseUpstreamSse(upstreamResp, (event, payload) => {
           if (event === "response.output_text.delta") {
             const delta = payload?.delta || "";
@@ -399,17 +418,54 @@ const server = http.createServer(async (req, res) => {
             });
           }
 
+          if (event === "response.output_item.added" && payload?.item?.type === "function_call") {
+            const itemId = payload?.item?.id || payload?.output_index || randomUUID();
+            const state = ensureToolCallState(itemId, {
+              index: payload?.output_index,
+              id: payload?.item?.call_id || payload?.item?.id,
+              name: payload?.item?.name || ""
+            });
+
+            if (payload?.item?.call_id) state.id = payload.item.call_id;
+            if (payload?.item?.name) state.name = payload.item.name;
+
+            sendSse(res, {
+              id,
+              object: "chat.completion.chunk",
+              created,
+              model,
+              choices: [
+                {
+                  index: 0,
+                  delta: {
+                    tool_calls: [
+                      {
+                        index: state.index,
+                        id: state.id,
+                        type: "function",
+                        function: {
+                          name: state.name,
+                          arguments: ""
+                        }
+                      }
+                    ]
+                  },
+                  finish_reason: null
+                }
+              ]
+            });
+          }
+
           if (event === "response.function_call_arguments.delta") {
             const itemId = payload?.item_id || payload?.output_index || randomUUID();
-            const state = toolCallStates.get(itemId) || {
-              index: toolCallStates.size,
-              id: payload?.call_id || payload?.item_id || randomUUID(),
+            const state = ensureToolCallState(itemId, {
+              index: payload?.output_index,
+              id: payload?.call_id || payload?.item_id,
               name: payload?.name || ""
-            };
+            });
 
             if (payload?.call_id) state.id = payload.call_id;
             if (payload?.name) state.name = payload.name;
-            toolCallStates.set(itemId, state);
 
             sendSse(res, {
               id,
