@@ -23,6 +23,20 @@
 docker build -t codex-openai-proxy .
 ```
 
+## 发布 GHCR 镜像
+
+仓库内置了一个 GitHub Actions 工作流，用于手动触发构建并发布镜像到 GHCR。
+
+- 触发方式：GitHub Actions 页面手动运行 `Publish GHCR Image`
+- 发布地址：`ghcr.io/fqscfqj/codex-responses-proxy`
+- 发布标签：`latest`
+
+拉取示例：
+
+```bash
+docker pull ghcr.io/fqscfqj/codex-responses-proxy:latest
+```
+
 ## 运行容器
 
 先在宿主机上准备上游基础地址，再通过 Docker 环境变量传入容器：
