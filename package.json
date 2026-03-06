@@ -1,0 +1,13 @@
+{
+  "name": "openai-compat-responses-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Proxy OpenAI chat.completions format to upstream responses API",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
