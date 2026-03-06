@@ -33,32 +33,39 @@ function extractTextContent(content) {
 }
 
 function normalizeMessageContent(role, content) {
+  const textPartType = role === "assistant" ? "output_text" : "input_text";
+
   if (typeof content === "string") {
-    return [{ type: "input_text", text: content }];
+    return [{ type: textPartType, text: content }];
   }
 
   if (!Array.isArray(content)) {
     const text = extractTextContent(content);
-    return text ? [{ type: "input_text", text }] : [];
+    return text ? [{ type: textPartType, text }] : [];
   }
 
   const parts = [];
 
   for (const item of content) {
     if (typeof item === "string") {
-      parts.push({ type: "input_text", text: item });
+      parts.push({ type: textPartType, text: item });
       continue;
     }
 
     if (!item || typeof item !== "object") continue;
 
     if (item.type === "text") {
-      parts.push({ type: "input_text", text: item.text || "" });
+      parts.push({ type: textPartType, text: item.text || "" });
       continue;
     }
 
     if (item.type === "input_text" || item.type === "output_text") {
-      parts.push({ type: "input_text", text: item.text || "" });
+      parts.push({ type: textPartType, text: item.text || "" });
+      continue;
+    }
+
+    if (role === "assistant" && item.type === "refusal") {
+      parts.push({ type: "refusal", refusal: item.refusal || item.text || "" });
     }
   }
 
