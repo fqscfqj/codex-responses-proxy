@@ -419,7 +419,7 @@ const server = http.createServer(async (req, res) => {
                         id: state.id,
                         type: "function",
                         function: {
-                          ...(state.name ? { name: state.name } : {}),
+                          name: state.name || "",
                           arguments: payload?.delta || ""
                         }
                       }
