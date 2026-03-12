@@ -65,6 +65,56 @@ docker run --rm -p 8080:8080 `
   codex-openai-proxy
 ```
 
+## Docker Compose 示例
+
+仓库已提供示例文件：[compose.yaml](e:\github\test\compose.yaml)。
+
+默认直接使用 GHCR 预构建镜像，适合不想本地 `build` 的场景：
+
+```yaml
+image: ghcr.io/fqscfqj/codex-responses-proxy:latest
+```
+
+先准备环境变量：
+
+```bash
+export UPSTREAM_BASE="https://your-upstream-host/codex/v1"
+export UPSTREAM_API_KEY="YOUR_UPSTREAM_KEY"
+export AVAILABLE_MODELS="gpt-5.2-codex,gpt-4.1"
+```
+
+然后启动：
+
+```bash
+docker compose up -d
+```
+
+如果使用 Windows PowerShell：
+
+```powershell
+$env:UPSTREAM_BASE = "https://your-upstream-host/codex/v1"
+$env:UPSTREAM_API_KEY = "YOUR_UPSTREAM_KEY"
+$env:AVAILABLE_MODELS = "gpt-5.2-codex,gpt-4.1"
+
+docker compose up -d
+```
+
+如果你需要基于当前仓库源码本地构建镜像，可以改用：
+
+```yaml
+services:
+  proxy:
+    build:
+      context: .
+    image: codex-openai-proxy:local
+```
+
+然后执行：
+
+```bash
+docker compose up --build -d
+```
+
 ## 请求示例（非流式）
 
 ```bash

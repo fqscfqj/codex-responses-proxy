@@ -1,0 +1,11 @@
+services:
+  proxy:
+    image: ghcr.io/fqscfqj/codex-responses-proxy:latest
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      PORT: 8080
+      UPSTREAM_BASE: ${UPSTREAM_BASE:-https://your-upstream-host/codex/v1}
+      UPSTREAM_API_KEY: ${UPSTREAM_API_KEY:-}
+      AVAILABLE_MODELS: ${AVAILABLE_MODELS:-}
+    restart: unless-stopped
